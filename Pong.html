@@ -51,7 +51,7 @@
   <button id="btnReiniciar">Voltar ao Menu</button>
 
   <script>
-    // 🎮 Referências principais
+    //  Referências principais
     const campo = document.getElementById("campoJogo");
     const ctx = campo.getContext("2d");
     const menuDiv = document.getElementById("menu");
@@ -59,43 +59,43 @@
     const btnSingle = document.getElementById("btnSingle");
     const btnMulti = document.getElementById("btnMulti");
 
-    // 🏓 Paddles
+    //  Paddles
     const larguraRaquete = 20, alturaRaquete = 120;
     let raquete1X, raquete1Y, raquete2X, raquete2Y;
 
-    // ⚽ Bola
+    //  Bola
     let bolaX, bolaY, velBolaX, velBolaY;
     const raioBola = 14;
 
-    // 🥅 Gol
+    //  Gol
     const alturaGol = 220;
     let posicaoGolY;
 
-    // 📊 Placar
+    //  Placar
     let pontosEsquerda = 0, pontosDireita = 0;
 
-    // ⚙️ Controle do jogo
+    //  Controle do jogo
     let jogoRodando = false;
     let modo = "single"; // "single" ou "multi"
     const velocidadeRaquete = 8;
-    let teclasPressionadas = {};
+    let teclasPressionadas = {} ;
 
-    // ⏫ Velocidade progressiva
+    //  Velocidade progressiva
     let contadorToques = 0;
     const limiteAumento = 20;
     const fatorAumento = 1.05;
 
-    // 🎹 Eventos de teclado
+    //  Eventos de teclado
     document.addEventListener("keydown", (e) => teclasPressionadas[e.key] = true);
     document.addEventListener("keyup", (e) => teclasPressionadas[e.key] = false);
 
-    // 🎮 Eventos de menu
+    //  Eventos de menu
     btnSingle.addEventListener("click", () => iniciarModo("single"));
     btnMulti.addEventListener("click", () => iniciarModo("multi"));
     btnReiniciar.addEventListener("click", () => voltarMenu());
 
     // ===============================
-    // 🚀 Funções principais do jogo
+    //  Funções principais do jogo
     // ===============================
 
     function iniciarModo(modoSelecionado) {
