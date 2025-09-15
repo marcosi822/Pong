@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Pong - Escolha de Modo</title>
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: "Courier New", monospace;
+      color: white;
+      flex-direction: column;
+    }
+    canvas {
+      background: rgba(0, 0, 0, 0.7);
+      border: 3px solid white;
+      border-radius: 10px;
+      box-shadow: 0 0 40px rgba(255, 255, 255, 0.3);
+      display: block;
+      margin-top: 10px;
+    }
+    #menu {
+      text-align: center;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #restartBtn {
+      display: none;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="menu">
+    <h2>Pong - Escolha o Modo</h2>
+    <button id="btnSingle">Single Player (vs Bot)</button>
+    <button id="btnMulti">Multiplayer Local</button>
+  </div>
+
+  <canvas id="campoJogo" width="1200" height="600" style="display:none;"></canvas>
+  <button id="btnReiniciar">Voltar ao Menu</button>
+
+  <script>
+    // 🎮 Referências principais
+    const campo = document.getElementById("campoJogo");
+    const ctx = campo.getContext("2d");
+    const menuDiv = document.getElementById("menu");
+    const btnReiniciar = document.getElementById("btnReiniciar");
+    const btnSingle = document.getElementById("btnSingle");
+    const btnMulti = document.getElementById("btnMulti");
+
+    // 🏓 Paddles
+    const larguraRaquete = 20, alturaRaquete = 120;
+    let raquete1X, raquete1Y, raquete2X, raquete2Y;
+
+    // ⚽ Bola
+    let bolaX, bolaY, velBolaX, velBolaY;
+    const raioBola = 14;
+
+    // 🥅 Gol
+    const alturaGol = 220;
+    let posicaoGolY;
+
+    // 📊 Placar
+    let pontosEsquerda = 0, pontosDireita = 0;
+
+    // ⚙️ Controle do jogo
+    let jogoRodando = false;
+    let modo = "single"; // "single" ou "multi"
+    const velocidadeRaquete = 8;
+    let teclasPressionadas = {};
+
+    // ⏫ Velocidade progressiva
+    let contadorToques = 0;
+    const limiteAumento = 20;
+    const fatorAumento = 1.05;
+
+    // 🎹 Eventos de teclado
+    document.addEventListener("keydown", (e) => teclasPressionadas[e.key] = true);
+    document.addEventListener("keyup", (e) => teclasPressionadas[e.key] = false);
+
+    // 🎮 Eventos de menu
+    btnSingle.addEventListener("click", () => iniciarModo("single"));
+    btnMulti.addEventListener("click", () => iniciarModo("multi"));
+    btnReiniciar.addEventListener("click", () => voltarMenu());
+
+    // ===============================
+    // 🚀 Funções principais do jogo
+    // ===============================
+
+    function iniciarModo(modoSelecionado) {
+      modo = modoSelecionado;
+      menuDiv.style.display = "none";
+      btnReiniciar.style.display = "inline-block";
+      campo.style.display = "block";
+      iniciarPartida();
+    }
+
+    function iniciarPartida() {
+      resetarPosicoes();
+      jogoRodando = true;
+      desenhar();
+    }
+
+    function voltarMenu() {
+      jogoRodando = false;
+      menuDiv.style.display = "block";
+      btnReiniciar.style.display = "none";
+      campo.style.display = "none";
+      pontosEsquerda = 0;
+      pontosDireita = 0;
+      contadorToques = 0;
+    }
+
+    function resetarPosicoes() {
+      // Posição inicial dos jogadores
+      raquete1X = 50;
+      raquete1Y = campo.height / 2 - alturaRaquete / 2;
+      raquete2X = campo.width - 50 - larguraRaquete;
+      raquete2Y = campo.height / 2 - alturaRaquete / 2;
+
+      // Área do gol
+      posicaoGolY = (campo.height - alturaGol) / 2;
+
+      // Posição inicial da bola
+      bolaX = campo.width / 2;
+      bolaY = campo.height / 2;
+      velBolaX = 6 * (Math.random() > 0.5 ? 1 : -1);
+      velBolaY = 5 * (Math.random() > 0.5 ? 1 : -1);
+      contadorToques = 0;
+    }
+
+    function desenhar() {
+      if (!jogoRodando) return;
+
+      ctx.clearRect(0, 0, campo.width, campo.height);
+
+      // Linha central
+      ctx.setLineDash([10, 15]);
+      ctx.beginPath();
+      ctx.moveTo(campo.width / 2, 0);
+      ctx.lineTo(campo.width / 2, campo.height);
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Gols
+      ctx.fillStyle = "#FFD700";
+      ctx.shadowColor = "#FFD700";
+      ctx.shadowBlur = 20;
+      ctx.fillRect(0, posicaoGolY, 8, alturaGol);
+      ctx.fillRect(campo.width - 8, posicaoGolY, 8, alturaGol);
+      ctx.shadowBlur = 0;
+
+      // Placar
+      ctx.font = "48px Courier New";
+      ctx.fillStyle = "white";
+      ctx.fillText(pontosEsquerda, campo.width / 4, 60);
+      ctx.fillText(pontosDireita, (campo.width * 3) / 4, 60);
+
+      // Raquetes
+      ctx.fillStyle = "#1E90FF";
+      ctx.fillRect(raquete1X, raquete1Y, larguraRaquete, alturaRaquete);
+      ctx.fillStyle = "#FF4500";
+      ctx.fillRect(raquete2X, raquete2Y, larguraRaquete, alturaRaquete);
+
+      // Bola
+      ctx.beginPath();
+      ctx.arc(bolaX, bolaY, raioBola, 0, Math.PI * 2);
+      ctx.fillStyle = "white";
+      ctx.shadowColor = "white";
+      ctx.shadowBlur = 15;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Movimento da bola
+      bolaX += velBolaX;
+      bolaY += velBolaY;
+
+      // Colisão com teto e chão
+      if (bolaY - raioBola < 0 || bolaY + raioBola > campo.height) {
+        velBolaY *= -1;
+      }
+
+      // Colisão com raquetes
+      verificarColisao(raquete1X, raquete1Y);
+      verificarColisao(raquete2X, raquete2Y);
+
+      // Gols e rebotes laterais
+      if (bolaX - raioBola < 0) {
+        if (bolaY < posicaoGolY || bolaY > posicaoGolY + alturaGol) {
+          velBolaX *= -1;
+          bolaX = raioBola;
+        } else {
+          pontosDireita++;
+          resetarPosicoes();
+        }
+      }
+      if (bolaX + raioBola > campo.width) {
+        if (bolaY < posicaoGolY || bolaY > posicaoGolY + alturaGol) {
+          velBolaX *= -1;
+          bolaX = campo.width - raioBola;
+        } else {
+          pontosEsquerda++;
+          resetarPosicoes();
+        }
+      }
+
+      // Movimento jogador 1 (W/S)
+      if (teclasPressionadas["w"] || teclasPressionadas["W"]) raquete1Y -= velocidadeRaquete;
+      if (teclasPressionadas["s"] || teclasPressionadas["S"]) raquete1Y += velocidadeRaquete;
+      raquete1Y = Math.max(0, Math.min(campo.height - alturaRaquete, raquete1Y));
+
+      if (modo === "multi") {
+        // Jogador 2 (setas ↑/↓)
+        if (teclasPressionadas["ArrowUp"]) raquete2Y -= velocidadeRaquete;
+        if (teclasPressionadas["ArrowDown"]) raquete2Y += velocidadeRaquete;
+        raquete2Y = Math.max(0, Math.min(campo.height - alturaRaquete, raquete2Y));
+      } else {
+        // Bot
+        if (bolaY < raquete2Y + alturaRaquete / 2) raquete2Y -= 6;
+        if (bolaY > raquete2Y + alturaRaquete / 2) raquete2Y += 6;
+        raquete2Y = Math.max(0, Math.min(campo.height - alturaRaquete, raquete2Y));
+      }
+
+      requestAnimationFrame(desenhar);
+    }
+
+    function verificarColisao(px, py) {
+      if (bolaX + raioBola > px && bolaX - raioBola < px + larguraRaquete &&
+          bolaY + raioBola > py && bolaY - raioBola < py + alturaRaquete) {
+
+        velBolaX *= -1;
+
+        if (contadorToques < limiteAumento) {
+          velBolaX *= fatorAumento;
+          velBolaY *= fatorAumento;
+          contadorToques++;
+        }
+
+        if (px === raquete1X) bolaX = px + larguraRaquete + raioBola;
+        else bolaX = px - raioBola;
+      }
+    }
+  </script>
+</body>
+</html>
