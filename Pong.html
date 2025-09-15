@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Pong - Escolha de Modo</title>
+  <title>Pong</title>
   <style>
     body {
       margin: 0;
@@ -28,128 +28,111 @@
     }
     button {
       margin: 5px;
-      padding: 10px 20px;
+      padding: 12px 20px;
       font-size: 16px;
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      background-color: #3643f413;
+      color: white;
+      box-shadow: 0 4px 6px rgba(253, 247, 246, 0.226);
+      transition: background-color 0.3s;
     }
-    #restartBtn {
+    button:hover {
+      background-color: #3643f43f;
+    }
+    #btnVoltar {
       display: none;
       margin-top: 10px;
+      background-color: #3643f43f;
+    }
+    #btnVoltar:hover {
+      background-color: #3643f41a;
+    }
+    h2 {
+      margin: 10px 0;
+      font-size: 28px;
+      color: white;
     }
   </style>
 </head>
 <body>
   <div id="menu">
     <h2>Pong - Escolha o Modo</h2>
-    <button id="btnSingle">Single Player (vs Bot)</button>
-    <button id="btnMulti">Multiplayer Local</button>
+    <button id="btnBot">Contra Bot</button>
+    <button id="btn2p">2 Jogadores</button>
   </div>
 
-  <canvas id="campoJogo" width="1200" height="600" style="display:none;"></canvas>
-  <button id="btnReiniciar">Voltar ao Menu</button>
+  <canvas id="jogo" width="800" height="400" style="display:none;"></canvas>
+  <button id="btnVoltar">Voltar</button>
 
   <script>
-    //  Referências principais
-    const campo = document.getElementById("campoJogo");
-    const ctx = campo.getContext("2d");
-    const menuDiv = document.getElementById("menu");
-    const btnReiniciar = document.getElementById("btnReiniciar");
-    const btnSingle = document.getElementById("btnSingle");
-    const btnMulti = document.getElementById("btnMulti");
+    const canvas = document.getElementById("jogo");
+    const ctx = canvas.getContext("2d");
+    const menu = document.getElementById("menu");
+    const btnBot = document.getElementById("btnBot");
+    const btn2p = document.getElementById("btn2p");
+    const btnVoltar = document.getElementById("btnVoltar");
 
-    //  Paddles
-    const larguraRaquete = 20, alturaRaquete = 120;
-    let raquete1X, raquete1Y, raquete2X, raquete2Y;
+    const raqueteW = 15, raqueteH = 80;
+    const bolaTam = 10;
+    const golTam = 150;
 
-    //  Bola
-    let bolaX, bolaY, velBolaX, velBolaY;
-    const raioBola = 14;
+    let r1, r2, bola, velocidade;
+    let pontos1 = 0, pontos2 = 0;
+    let jogando = false;
+    let modo = "bot";
+    let teclas = {};
+    let hits = 0;
 
-    //  Gol
-    const alturaGol = 220;
-    let posicaoGolY;
+    document.addEventListener("keydown", e => teclas[e.key] = true);
+    document.addEventListener("keyup", e => teclas[e.key] = false);
 
-    //  Placar
-    let pontosEsquerda = 0, pontosDireita = 0;
+    btnBot.onclick = () => iniciar("bot");
+    btn2p.onclick = () => iniciar("2p");
+    btnVoltar.onclick = () => voltar();
 
-    //  Controle do jogo
-    let jogoRodando = false;
-    let modo = "single"; // "single" ou "multi"
-    const velocidadeRaquete = 8;
-    let teclasPressionadas = {} ;
-
-    //  Velocidade progressiva
-    let contadorToques = 0;
-    const limiteAumento = 20;
-    const fatorAumento = 1.05;
-
-    //  Eventos de teclado
-    document.addEventListener("keydown", (e) => teclasPressionadas[e.key] = true);
-    document.addEventListener("keyup", (e) => teclasPressionadas[e.key] = false);
-
-    //  Eventos de menu
-    btnSingle.addEventListener("click", () => iniciarModo("single"));
-    btnMulti.addEventListener("click", () => iniciarModo("multi"));
-    btnReiniciar.addEventListener("click", () => voltarMenu());
-
-    // ===============================
-    //  Funções principais do jogo
-    // ===============================
-
-    function iniciarModo(modoSelecionado) {
-      modo = modoSelecionado;
-      menuDiv.style.display = "none";
-      btnReiniciar.style.display = "inline-block";
-      campo.style.display = "block";
-      iniciarPartida();
+    function iniciar(tipo) {
+      modo = tipo;
+      menu.style.display = "none";
+      btnVoltar.style.display = "inline-block";
+      canvas.style.display = "block";
+      resetar();
+      jogando = true;
+      loop();
     }
 
-    function iniciarPartida() {
-      resetarPosicoes();
-      jogoRodando = true;
-      desenhar();
+    function voltar() {
+      jogando = false;
+      menu.style.display = "block";
+      btnVoltar.style.display = "none";
+      canvas.style.display = "none";
+      pontos1 = 0;
+      pontos2 = 0;
+      hits = 0;
     }
 
-    function voltarMenu() {
-      jogoRodando = false;
-      menuDiv.style.display = "block";
-      btnReiniciar.style.display = "none";
-      campo.style.display = "none";
-      pontosEsquerda = 0;
-      pontosDireita = 0;
-      contadorToques = 0;
+    function resetar() {
+      r1 = { x: 30, y: canvas.height / 2 - raqueteH / 2 };
+      r2 = { x: canvas.width - 30 - raqueteW, y: canvas.height / 2 - raqueteH / 2 };
+      bola = { x: canvas.width / 2, y: canvas.height / 2 };
+      velocidade = {
+        x: 4 * (Math.random() < 0.5 ? 1 : -1),
+        y: 3 * (Math.random() < 0.5 ? 1 : -1)
+      };
+      hits = 0;
     }
 
-    function resetarPosicoes() {
-      // Posição inicial dos jogadores
-      raquete1X = 50;
-      raquete1Y = campo.height / 2 - alturaRaquete / 2;
-      raquete2X = campo.width - 50 - larguraRaquete;
-      raquete2Y = campo.height / 2 - alturaRaquete / 2;
+    function loop() {
+      if (!jogando) return;
 
-      // Área do gol
-      posicaoGolY = (campo.height - alturaGol) / 2;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Posição inicial da bola
-      bolaX = campo.width / 2;
-      bolaY = campo.height / 2;
-      velBolaX = 6 * (Math.random() > 0.5 ? 1 : -1);
-      velBolaY = 5 * (Math.random() > 0.5 ? 1 : -1);
-      contadorToques = 0;
-    }
-
-    function desenhar() {
-      if (!jogoRodando) return;
-
-      ctx.clearRect(0, 0, campo.width, campo.height);
-
-      // Linha central
-      ctx.setLineDash([10, 15]);
+      // Meio
+      ctx.setLineDash([6, 10]);
       ctx.beginPath();
-      ctx.moveTo(campo.width / 2, 0);
-      ctx.lineTo(campo.width / 2, campo.height);
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
       ctx.strokeStyle = "rgba(255,255,255,0.5)";
       ctx.stroke();
       ctx.setLineDash([]);
@@ -158,25 +141,25 @@
       ctx.fillStyle = "#FFD700";
       ctx.shadowColor = "#FFD700";
       ctx.shadowBlur = 20;
-      ctx.fillRect(0, posicaoGolY, 8, alturaGol);
-      ctx.fillRect(campo.width - 8, posicaoGolY, 8, alturaGol);
+      ctx.fillRect(0, (canvas.height - golTam) / 2, 8, golTam);
+      ctx.fillRect(canvas.width - 8, (canvas.height - golTam) / 2, 8, golTam);
       ctx.shadowBlur = 0;
 
-      // Placar
+      // Pontos
       ctx.font = "48px Courier New";
-      ctx.fillStyle = "white";
-      ctx.fillText(pontosEsquerda, campo.width / 4, 60);
-      ctx.fillText(pontosDireita, (campo.width * 3) / 4, 60);
+      ctx.fillStyle = "#fff";
+      ctx.fillText(pontos1, canvas.width / 4, 60);
+      ctx.fillText(pontos2, canvas.width * 3 / 4, 60);
 
       // Raquetes
       ctx.fillStyle = "#1E90FF";
-      ctx.fillRect(raquete1X, raquete1Y, larguraRaquete, alturaRaquete);
+      ctx.fillRect(r1.x, r1.y, raqueteW, raqueteH);
       ctx.fillStyle = "#FF4500";
-      ctx.fillRect(raquete2X, raquete2Y, larguraRaquete, alturaRaquete);
+      ctx.fillRect(r2.x, r2.y, raqueteW, raqueteH);
 
       // Bola
       ctx.beginPath();
-      ctx.arc(bolaX, bolaY, raioBola, 0, Math.PI * 2);
+      ctx.arc(bola.x, bola.y, bolaTam, 0, Math.PI * 2);
       ctx.fillStyle = "white";
       ctx.shadowColor = "white";
       ctx.shadowBlur = 15;
@@ -184,72 +167,70 @@
       ctx.shadowBlur = 0;
 
       // Movimento da bola
-      bolaX += velBolaX;
-      bolaY += velBolaY;
+      bola.x += velocidade.x;
+      bola.y += velocidade.y;
 
-      // Colisão com teto e chão
-      if (bolaY - raioBola < 0 || bolaY + raioBola > campo.height) {
-        velBolaY *= -1;
-      }
+      // Bordas
+      if (bola.y - bolaTam < 0 || bola.y + bolaTam > canvas.height) velocidade.y *= -1;
 
-      // Colisão com raquetes
-      verificarColisao(raquete1X, raquete1Y);
-      verificarColisao(raquete2X, raquete2Y);
+      // Colisão
+      colisao(r1);
+      colisao(r2);
 
-      // Gols e rebotes laterais
-      if (bolaX - raioBola < 0) {
-        if (bolaY < posicaoGolY || bolaY > posicaoGolY + alturaGol) {
-          velBolaX *= -1;
-          bolaX = raioBola;
+      // Gol
+      if (bola.x - bolaTam < 0) {
+        if (bola.y < (canvas.height - golTam) / 2 || bola.y > (canvas.height + golTam) / 2) {
+          velocidade.x *= -1;
+          bola.x = bolaTam;
         } else {
-          pontosDireita++;
-          resetarPosicoes();
+          pontos2++;
+          resetar();
         }
       }
-      if (bolaX + raioBola > campo.width) {
-        if (bolaY < posicaoGolY || bolaY > posicaoGolY + alturaGol) {
-          velBolaX *= -1;
-          bolaX = campo.width - raioBola;
+      if (bola.x + bolaTam > canvas.width) {
+        if (bola.y < (canvas.height - golTam) / 2 || bola.y > (canvas.height + golTam) / 2) {
+          velocidade.x *= -1;
+          bola.x = canvas.width - bolaTam;
         } else {
-          pontosEsquerda++;
-          resetarPosicoes();
+          pontos1++;
+          resetar();
         }
       }
 
-      // Movimento jogador 1 (W/S)
-      if (teclasPressionadas["w"] || teclasPressionadas["W"]) raquete1Y -= velocidadeRaquete;
-      if (teclasPressionadas["s"] || teclasPressionadas["S"]) raquete1Y += velocidadeRaquete;
-      raquete1Y = Math.max(0, Math.min(campo.height - alturaRaquete, raquete1Y));
+      // Movimento jogador 1
+      if (teclas["w"]) r1.y -= 6;
+      if (teclas["s"]) r1.y += 6;
+      r1.y = Math.max(0, Math.min(canvas.height - raqueteH, r1.y));
 
-      if (modo === "multi") {
-        // Jogador 2 (setas ↑/↓)
-        if (teclasPressionadas["ArrowUp"]) raquete2Y -= velocidadeRaquete;
-        if (teclasPressionadas["ArrowDown"]) raquete2Y += velocidadeRaquete;
-        raquete2Y = Math.max(0, Math.min(campo.height - alturaRaquete, raquete2Y));
+      // Movimento jogador 2 ou bot
+      if (modo === "2p") {
+        if (teclas["ArrowUp"]) r2.y -= 6;
+        if (teclas["ArrowDown"]) r2.y += 6;
       } else {
-        // Bot
-        if (bolaY < raquete2Y + alturaRaquete / 2) raquete2Y -= 6;
-        if (bolaY > raquete2Y + alturaRaquete / 2) raquete2Y += 6;
-        raquete2Y = Math.max(0, Math.min(campo.height - alturaRaquete, raquete2Y));
+        if (bola.y < r2.y + raqueteH / 2) r2.y -= 4;
+        if (bola.y > r2.y + raqueteH / 2) r2.y += 4;
       }
+      r2.y = Math.max(0, Math.min(canvas.height - raqueteH, r2.y));
 
-      requestAnimationFrame(desenhar);
+      requestAnimationFrame(loop);
     }
 
-    function verificarColisao(px, py) {
-      if (bolaX + raioBola > px && bolaX - raioBola < px + larguraRaquete &&
-          bolaY + raioBola > py && bolaY - raioBola < py + alturaRaquete) {
-
-        velBolaX *= -1;
-
-        if (contadorToques < limiteAumento) {
-          velBolaX *= fatorAumento;
-          velBolaY *= fatorAumento;
-          contadorToques++;
+    function colisao(raquete) {
+      if (
+        bola.x + bolaTam > raquete.x &&
+        bola.x - bolaTam < raquete.x + raqueteW &&
+        bola.y + bolaTam > raquete.y &&
+        bola.y - bolaTam < raquete.y + raqueteH
+      ) {
+        velocidade.x *= -1;
+        if (hits < 10) {
+          velocidade.x *= 1.05;
+          velocidade.y *= 1.05;
+          hits++;
         }
-
-        if (px === raquete1X) bolaX = px + larguraRaquete + raioBola;
-        else bolaX = px - raioBola;
+        bola.x = raquete === r1
+          ? raquete.x + raqueteW + bolaTam
+          : raquete.x - bolaTam;
       }
     }
   </script>
