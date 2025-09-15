@@ -1,3 +1,4 @@
 # Pong
 
-https://marcosi822.github.io/Pong/Pong
+https://marcosi822.github.io/Pong/Pong.html
+
